@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: node_app
+    ports:
+      - "8080:8080"  # Map host port 8080 to container port 8080
+    environment:
+      - NODE_ENV=production  # Set environment variables (optional)
+    volumes:
+      - .:/app  # Mount the current directory to /app in the container (optional)
+      - /app/node_modules  # Avoid overwriting node_modules in the container
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
