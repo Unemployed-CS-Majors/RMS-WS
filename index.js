@@ -1,5 +1,3 @@
-// server.js
-
 const firebaseAdmin = require('firebase-admin');
 const WebSocket = require('ws');
 
@@ -20,24 +18,51 @@ wss.on('connection', (ws) => {
 
 const db = firebaseAdmin.firestore();
 
-db.collection('reservations').onSnapshot(snapshot => {
-    snapshot.docChanges().forEach(change => {
+// The getUser function that retrieves user details based on userId
+async function getUser(userId) {
+    const userRef = db.collection("users").doc(userId);
+    const user = await userRef.get();
+    if (!user.exists) {
+        return null;
+    }
+    console.log('User data:', user);
+    console.log('User data:', user.data());
+
+    return user.data();
+}
+
+db.collection('reservations').onSnapshot(async (snapshot) => {
+    for (const change of snapshot.docChanges()) {
         if (change.type === 'added' || change.type === 'modified' || change.type === 'removed') {
             const reservationData = change.doc.data();
+
             if (reservationData.status === 'pending') {
-                console.log('Change detected: ', change);
-                sendNotificationToClients(change);
+                try {
+                    // Fetch user details for the reservation based on userId
+                    const user = await getUser(reservationData.userId);
+
+                    if (user) {
+                        // Add user details to reservation
+                        reservationData.fullName = `${user.firstName} ${user.lastName}`;
+                        reservationData.email = user.email;
+                        reservationData.phoneNumber = user.phoneNumber;
+                    }
+                    console.log('Reservation data:', reservationData);
+                    // Send notification to all WebSocket clients
+                    sendNotificationToClients(reservationData);
+                } catch (error) {
+                    console.error('Error fetching user details: ', error);
+                }
             }
         }
-    });
+    }
 });
 
 function sendNotificationToClients(change) {
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({
-                type: change.type,
-                data: change.doc.data(),
+                data: change,
             }));
         }
     });
