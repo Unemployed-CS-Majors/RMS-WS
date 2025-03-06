@@ -47,6 +47,7 @@ db.collection('reservations').onSnapshot(async (snapshot) => {
                         reservationData.email = user.email;
                         reservationData.phoneNumber = user.phoneNumber;
                     }
+                    reservationData.id = change.doc.id;
                     console.log('Reservation data:', reservationData);
                     // Send notification to all WebSocket clients
                     sendNotificationToClients(reservationData);
